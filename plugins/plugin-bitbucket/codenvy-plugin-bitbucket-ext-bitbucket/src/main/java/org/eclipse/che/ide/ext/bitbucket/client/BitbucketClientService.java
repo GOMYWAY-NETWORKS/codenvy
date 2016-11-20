@@ -29,6 +29,7 @@ import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketUser;
 import org.eclipse.che.ide.rest.AsyncRequestCallback;
 import org.eclipse.che.ide.rest.AsyncRequestFactory;
 import org.eclipse.che.ide.rest.DtoUnmarshallerFactory;
+import org.eclipse.che.ide.rest.StringUnmarshaller;
 import org.eclipse.che.ide.ui.loaders.request.LoaderFactory;
 
 import javax.validation.constraints.NotNull;
@@ -45,6 +46,8 @@ import static org.eclipse.che.ide.ext.bitbucket.shared.StringHelper.isNullOrEmpt
 @Singleton
 public class BitbucketClientService {
     private static final String USER         = "/user";
+    private static final String HOST         = "/host";
+    private static final String TOKEN        = "/token";
     private static final String REPOSITORIES = "/repositories";
     private static final String SSH_KEYS     = "/ssh-keys";
 
@@ -84,11 +87,25 @@ public class BitbucketClientService {
         asyncRequestFactory.createGetRequest(requestUrl).loader(loaderFactory.newLoader()).send(callback);
     }
 
+    public Promise<String> getHost() {
+        final String requestUrl = getBaseUrl() + HOST;
+        return asyncRequestFactory.createGetRequest(requestUrl)
+                                  .loader(loaderFactory.newLoader())
+                                  .send(new StringUnmarshaller());
+    }
+
+    public Promise<String> getToken() {
+        final String requestUrl = getBaseUrl() + TOKEN;
+        return asyncRequestFactory.createGetRequest(requestUrl)
+                                  .loader(loaderFactory.newLoader())
+                                  .send(new StringUnmarshaller());
+    }
+
     /**
      * Returns the promise which resolves authorized user information or rejects with an error.
      */
-    public Promise<BitbucketUser> getUser() {
-        final String requestUrl = getBaseUrl() + USER;
+    public Promise<BitbucketUser> getUser(String username) {
+        final String requestUrl = getBaseUrl() + USER + "?username=" + username;
         return asyncRequestFactory.createGetRequest(requestUrl)
                                   .loader(loaderFactory.newLoader())
                                   .send(dtoUnmarshallerFactory.newUnmarshaller(BitbucketUser.class));

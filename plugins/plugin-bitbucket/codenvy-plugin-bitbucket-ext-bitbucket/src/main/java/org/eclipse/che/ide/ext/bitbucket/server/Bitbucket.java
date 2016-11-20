@@ -18,6 +18,7 @@ import static java.net.URLDecoder.decode;
 import static java.net.URLEncoder.encode;
 import static org.eclipse.che.commons.json.JsonHelper.toJson;
 import static org.eclipse.che.commons.json.JsonNameConventions.CAMEL_UNDERSCORE;
+import static org.eclipse.che.dto.server.DtoFactory.newDto;
 import static org.eclipse.che.ide.MimeType.APPLICATION_FORM_URLENCODED;
 import static org.eclipse.che.ide.MimeType.APPLICATION_JSON;
 import static org.eclipse.che.ide.ext.bitbucket.shared.Preconditions.checkArgument;
@@ -42,6 +43,7 @@ import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketPullRequestsPage;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketRepositoriesPage;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketRepository;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketRepositoryFork;
+import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketServerUser;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketUser;
 
 import javax.validation.constraints.NotNull;
@@ -69,10 +71,13 @@ public class Bitbucket {
     private static final String BITBUCKET_1_0_API_URL = BITBUCKET_API_URL + "/1.0";
 
     private final OAuthTokenProvider tokenProvider;
+    private final URLTemplates urlTemplates;
 
     @Inject
-    public Bitbucket(@NotNull final OAuthTokenProvider tokenProvider) {
+    public Bitbucket(@NotNull final OAuthTokenProvider tokenProvider,
+                     URLTemplates urlTemplates) {
         this.tokenProvider = tokenProvider;
+        this.urlTemplates = urlTemplates;
     }
 
     /**
@@ -86,9 +91,13 @@ public class Bitbucket {
      * @throws ServerException
      *         if any error occurs when parse.
      */
-    public BitbucketUser getUser() throws IOException, BitbucketException, ServerException {
-        final String response = getJson(BITBUCKET_2_0_API_URL + "/user", OK);
-        return parseJsonResponse(response, BitbucketUser.class);
+    public BitbucketUser getUser(String username) throws IOException, BitbucketException, ServerException {
+        //final String response = getJson(BITBUCKET_2_0_API_URL + "/user", OK);
+        String userUrl = urlTemplates.userUrl(username);
+        final String response = getJson(userUrl, OK);
+        BitbucketServerUser user = parseJsonResponse(response, BitbucketServerUser.class);
+
+        return newDto(BitbucketUser.class);
     }
 
     /**
@@ -110,10 +119,7 @@ public class Bitbucket {
      */
     public BitbucketRepository getRepository(@NotNull final String owner, @NotNull final String repositorySlug)
             throws IOException, BitbucketException, ServerException, IllegalArgumentException {
-        checkArgument(!isNullOrEmpty(owner), "owner");
-        checkArgument(!isNullOrEmpty(repositorySlug), "repositorySlug");
-
-        final String response = getJson(BITBUCKET_2_0_API_URL + "/repositories/" + owner + "/" + repositorySlug, OK);
+        final String response = getJson(urlTemplates.repositoryUrl(owner, repositorySlug), OK);
         return parseJsonResponse(response, BitbucketRepository.class);
     }
 

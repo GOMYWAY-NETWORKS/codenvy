@@ -14,6 +14,12 @@
  */
 package org.eclipse.che.ide.ext.bitbucket.server.rest;
 
+import com.google.api.client.auth.oauth.OAuthCredentialsResponse;
+import com.google.api.client.auth.oauth.OAuthGetTemporaryToken;
+import com.google.api.client.auth.oauth.OAuthRsaSigner;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.util.Base64;
+
 import org.eclipse.che.api.core.NotFoundException;
 import org.eclipse.che.api.core.ServerException;
 import org.eclipse.che.api.core.UnauthorizedException;
@@ -40,6 +46,11 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import java.io.IOException;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.List;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
@@ -56,6 +67,23 @@ public class BitbucketService {
     private final BitbucketKeyUploader bitbucketKeyUploader;
     private final SshServiceClient     sshServiceClient;
 
+    private String privateKey         = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBALhmj0yajPtj4Dug\n" +
+                                        "JvAiMopt8p25Dx7TJFhml/28WOmwaCDOva6PcJhxJNgJK9Gnc9QHQRDLcMiQriCQ\n" +
+                                        "wUG+df7Ip8kyjmCn2gljiFhGk3bmpzHPabOVJM8BiQVdif0hyjB8pjPKZ060JoY0\n" +
+                                        "Q5Ftnmeze93gCcUfn9jxMPrdwJ5BAgMBAAECgYAzVfIM7HXVQp/ZWaOddJfHbAaA\n" +
+                                        "HFX2SeezaJRlwjqqjD7g601pPGunNNCCCEOXsVuQqphVmZ2DaKvhSwtSRzjHxRRN\n" +
+                                        "yAzOR36Z6W/ALbqJq6Z8R754E0XTKdUKg3GmJ2G09czlrFauv8tc1Jw/UpKgP6JA\n" +
+                                        "u51+KFhwt5WqsizYcQJBAO2v0P6kxG1g1RgiZxomLNzbvouCYRDmXwsk0NymvbCy\n" +
+                                        "71GeWg0LSAEwAfu0KqxbXTWUmblabhJ8FIL9LpeeaZUCQQDGm7dRPl5N6Izt6aw7\n" +
+                                        "OEYJZlBk9vg+Qek2E4x1YTnXxf6uUq/BQVLP1nJC5myQ/sDhWYun+soKJIYsayIa\n" +
+                                        "8679AkEA0ftjXbPevOqxF5M9FsLnG28e1U0nx7BeAxBRXL4KExLhjm+hCqkOwc3R\n" +
+                                        "0raGhKJqpC1V6YRUfgwUauyVvuj6SQJAQ3MEudm1iz3sBqxyKpZ86ppNuUxKmFIo\n" +
+                                        "Eo5nCEIhs87xJGC+gaJermkE2wWIX2G1PZL8o+q/DNzEmHc12PNjPQJBANyJJW3E\n" +
+                                        "NmPbPBo56PD6mFNuZiR2nUymH/P9vu9gm58qofshqOwe/wGJB0Q9sqp86oW3eRFd\n" +
+                                        "0191X1dDSH/gLr8=";
+    private String oauth_consumer_key = "hardcoded-consumer";
+    private String requestUrl         = "http://bitbucket.codenvy-stg.com:7990/plugins/servlet/oauth/request-token";
+
     @Inject
     public BitbucketService(@NotNull final Bitbucket bitbucket,
                             @NotNull final BitbucketKeyUploader bitbucketKeyUploader,
@@ -66,13 +94,43 @@ public class BitbucketService {
     }
 
     /**
-     * @see org.eclipse.che.ide.ext.bitbucket.server.Bitbucket#getUser()
+     * @see org.eclipse.che.ide.ext.bitbucket.server.Bitbucket#getUser(String)
      */
     @GET
     @Path("user")
     @Produces(APPLICATION_JSON)
-    public BitbucketUser getUser() throws IOException, BitbucketException, ServerException {
-        return bitbucket.getUser();
+    public BitbucketUser getUser(@QueryParam("username") final String username) throws IOException, BitbucketException, ServerException {
+        return bitbucket.getUser(username);
+    }
+
+    @GET
+    @Path("host")
+    public String getHost() {
+        return "http://bitbucket.codenvy-stg.com:7990";
+    }
+
+    @GET
+    @Path("token")
+    public String getToken(@QueryParam("callback") final String callback)
+            throws InvalidKeySpecException, NoSuchAlgorithmException, IOException {
+        OAuthRsaSigner signer = new OAuthRsaSigner();
+        signer.privateKey = getPrivateKey(privateKey);
+        BitBucketOAuthGetTemporaryToken getTemporaryToken = new BitBucketOAuthGetTemporaryToken(requestUrl);
+        getTemporaryToken.signer = signer;
+        getTemporaryToken.consumerKey = oauth_consumer_key;
+        getTemporaryToken.callback = callback;
+        getTemporaryToken.transport = new NetHttpTransport();
+
+        OAuthCredentialsResponse response = getTemporaryToken.execute();
+
+        return response.token;
+    }
+
+    private PrivateKey getPrivateKey(String privateKey) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        byte[] privateKeyBytes = Base64.decodeBase64(privateKey);
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePrivate(keySpec);
     }
 
     /**
@@ -174,6 +232,13 @@ public class BitbucketService {
             bitbucketKeyUploader.uploadKey(sshPair.getPublicKey());
         } catch (final IOException e) {
             throw new GitException(e);
+        }
+    }
+
+    private class BitBucketOAuthGetTemporaryToken extends OAuthGetTemporaryToken {
+        BitBucketOAuthGetTemporaryToken(String authorizationServerUrl) {
+            super(authorizationServerUrl);
+            super.usePost = true;
         }
     }
 }

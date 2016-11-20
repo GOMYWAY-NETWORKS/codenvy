@@ -79,7 +79,7 @@ public class BitbucketHostingService implements VcsHostingService {
      */
 
     private static final String SSH_URL_PREFIX           = "git@bitbucket\\.org:";
-    private static final String HTTPS_URL_PREFIX         = "https:\\/\\/([^@]+@)?bitbucket\\.org\\/";
+    private static final String HTTPS_URL_PREFIX         = "http:\\/\\/([^@]+@)?bitbucket\\.codenvy-stg\\.com:7990/";
     private static final String OWNER_REPO_REGEX         = "([^\\/]+)\\/([^\\/]+)";
     private static final String REPOSITORY_GIT_EXTENSION = ".git";
     private static final RegExp SSH_URL_REGEXP           = compile(SSH_URL_PREFIX + OWNER_REPO_REGEX);
@@ -92,6 +92,8 @@ public class BitbucketHostingService implements VcsHostingService {
     private final BitbucketClientService  bitbucketClientService;
     private final HostingServiceTemplates templates;
     private final String                  baseUrl;
+
+    private String remoteUrl;
 
     @Inject
     public BitbucketHostingService(@NotNull final AppContext appContext,
@@ -110,6 +112,7 @@ public class BitbucketHostingService implements VcsHostingService {
 
     @Override
     public VcsHostingService init(String remoteUrl) {
+        this.remoteUrl = remoteUrl;
         return this;
     }
 
@@ -122,7 +125,7 @@ public class BitbucketHostingService implements VcsHostingService {
     @NotNull
     @Override
     public String getHost() {
-        return "bitbucket.org";
+        return "http://bitbucket.codenvy-stg.com:7990/";
     }
 
     @Override
@@ -166,8 +169,9 @@ public class BitbucketHostingService implements VcsHostingService {
         final BitbucketPullRequestLocation destination = dtoFactory.createDto(BitbucketPullRequestLocation.class)
                                                                    .withBranch(dtoFactory.createDto(BitbucketPullRequestBranch.class)
                                                                                          .withName(baseBranchName))
-                                                                   .withRepository(dtoFactory.createDto(BitbucketPullRequestRepository.class)
-                                                                                             .withFullName(owner + '/' + repository));
+                                                                   .withRepository(
+                                                                           dtoFactory.createDto(BitbucketPullRequestRepository.class)
+                                                                                     .withFullName(owner + '/' + repository));
 
         final BitbucketPullRequestLocation sources = dtoFactory.createDto(BitbucketPullRequestLocation.class)
                                                                .withBranch(dtoFactory.createDto(BitbucketPullRequestBranch.class)
@@ -305,7 +309,7 @@ public class BitbucketHostingService implements VcsHostingService {
 
     @Override
     public Promise<HostUser> getUserInfo() {
-        return bitbucketClientService.getUser()
+        return bitbucketClientService.getUser("ivinokur")
                                      .then(new Function<BitbucketUser, HostUser>() {
                                          @Override
                                          public HostUser apply(BitbucketUser user) throws FunctionException {
@@ -353,6 +357,12 @@ public class BitbucketHostingService implements VcsHostingService {
         if (workspace == null) {
             return Promises.reject(JsPromiseError.create("Error accessing current workspace"));
         }
+        bitbucketClientService.getToken().then(new Operation<String>() {
+            @Override
+            public void apply(String token) throws OperationException {
+
+            }
+        });
         final String authUrl = baseUrl
                                + "/oauth/authenticate?oauth_provider=bitbucket&userId=" + user.getProfile().getUserId()
                                + "&redirect_after_login="
