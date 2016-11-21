@@ -68,7 +68,7 @@
               <md-button nav-bar-selected flex che-reload-href
                          ng-href="{{codenvyNavbarCtrl.menuItemUrl.stacks}}" layout-align="left">
                 <div class="navbar-item" layout="row" layout-align="start center">
-                  <md-icon md-font-icon="navbar-icon material-design icon-ic_inbox_24px"></md-icon>
+                  <i class="fa fa-archive navbar-icon" aria-hidden="true"></i>
                   <span>Stacks</span>
                 </div>
               </md-button>
@@ -124,6 +124,7 @@
       </div>
 
       <navbar-recent-workspaces></navbar-recent-workspaces>
+      <navbar-teams></navbar-teams>
 
       <div ng-show="codenvyNavbarCtrl.isAdminServiceAvailable" class="admin-navbar-menu"
            ng-init="configMenuIsExpand=true">
