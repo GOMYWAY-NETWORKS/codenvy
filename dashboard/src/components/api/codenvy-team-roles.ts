@@ -14,14 +14,18 @@
  */
 'use strict';
 
-import {CodenvyApiConfig} from './api/codenvy-api-config';
-import {UniqueTeamNameValidator} from './api/validator/unique-team-name-validator.directive';
+/**
+ * This is enum of team roles.
+ *
+ * @author Ann Shumilova
+ */
+export enum CodenvyTeamRoles {
+  MANAGE_TEAM = <any> {'title': 'Manage team', 'actions' : ['update', 'setPermissions']},
+  MANAGE_RESOURCES = <any> {'title': 'Manage resources', 'actions' : ['manageResources']},
+  MANAGE_WORKSPACES = <any> {'title': 'Manage workspaces', 'actions' : ['manageWorkspaces']},
+  CREATE_WORKSPACES = <any> {'title': 'Create workspaces', 'actions' : ['createWorkspaces']},
 
-export class CodenvyComponentsConfig {
-
-  constructor(register) {
-    new CodenvyApiConfig(register);
-
-    register.directive('uniqueTeamName', UniqueTeamNameValidator);
+  getValues() {
+    return [MANAGE_TEAM, MANAGE_RESOURCES, MANAGE_WORKSPACES, CREATE_WORKSPACES];
   }
 }

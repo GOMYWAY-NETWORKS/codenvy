@@ -14,14 +14,21 @@
  */
 'use strict';
 
-import {CodenvyApiConfig} from './api/codenvy-api-config';
-import {UniqueTeamNameValidator} from './api/validator/unique-team-name-validator.directive';
+/**
+ * @ngdoc directive
+ * @name teams.directive:NavbarTeams
+ * @description This class is handling the directive of for listing teams in navbar.
+ * @author Ann Shumilova
+ */
+export class NavbarTeams implements ng.IDirective {
 
-export class CodenvyComponentsConfig {
+  restrict: string = 'E';
+  templateUrl: string = 'app/teams/navbar-teams/navbar-teams.html';
 
-  constructor(register) {
-    new CodenvyApiConfig(register);
+  controller: string = 'NavbarTeamsController';
+  controllerAs: string = 'navbarTeamsController';
+  bindToController: boolean = true;
 
-    register.directive('uniqueTeamName', UniqueTeamNameValidator);
+  constructor() {
   }
 }

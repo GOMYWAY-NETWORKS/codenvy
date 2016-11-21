@@ -1,0 +1,114 @@
+<!--
+
+    CODENVY CONFIDENTIAL
+    __________________
+
+     [2015] - [2016] Codenvy, S.A.
+     All Rights Reserved.
+
+    NOTICE:  All information contained herein is, and remains
+    the property of Codenvy S.A. and its suppliers,
+    if any.  The intellectual and technical concepts contained
+    herein are proprietary to Codenvy S.A.
+    and its suppliers and may be covered by U.S. and Foreign Patents,
+    patents in process, and are protected by trade secret or copyright law.
+    Dissemination of this information or reproduction of this material
+    is strictly forbidden unless prior written permission is obtained
+    from Codenvy S.A..
+
+-->
+<che-toolbar che-title="{{teamDetailsController.teamName}}" ng-if="!teamDetailsController.invalidTeam">
+</che-toolbar>
+<md-content md-scroll-y flex md-theme="default" ng-if="!teamDetailsController.invalidTeam">
+  <md-tabs md-dynamic-height md-stretch-tabs="auto"
+           md-selected="teamDetailsController.selectedTabIndex"
+           md-center-tabs="">
+
+    <!-- Settings Tab -->
+    <md-tab>
+      <md-tab-label>
+        <md-icon md-font-icon="material-design icon-ic_settings_24px" class="che-tab-label-icon"></md-icon>
+        <span class="che-tab-label-title">Settings</span>
+      </md-tab-label>
+      <md-tab-body>
+        <div flex layout="column"class="team-details-content">
+            <!-- Name -->
+          <che-label-container che-label-name="Name">
+              <ng-form name="teamForm">
+                  <che-input-box che-form="teamForm"
+                                 che-name="name"
+                                 aria-label="Name of the team"
+                                 che-place-holder="Name of the team"
+                                 ng-model="teamDetailsController.newName"
+                                 unique-team-name="teamDetailsController.team.name"
+                                 ng-change="teamDetailsController.updateTeamName(teamForm.$invalid)"
+                                 ng-model-options="{ updateOn: 'default blur', debounce: { 'default': 1000, 'blur': 0 } }"
+                                 required
+                                 ng-maxlength="128"
+                                 ng-pattern="/^[A-Za-z0-9_\s\-\.\+]+$/">
+                    <div ng-message="required">A name is required.</div>
+                    <div ng-message="pattern">The name should not contain special characters like dollar, etc.
+                    </div>
+                    <div ng-message="maxlength">The name has to be less than 128 characters long.</div>
+                    <div ng-message="md-maxlength">The name has to be less than 128 characters long.</div>
+                    <div ng-message="uniqueTeamName">This team name is already used.</div>
+                  </che-input-box>
+                 </ng-form>
+            </che-label-container>
+          <che-label-container class="team-details-delete-label"
+                               che-label-name="Delete Team"
+                               che-label-description="This is irreversible. Deleting your team will also destroy team workspaces and stacks.">
+            <che-button-danger che-button-title="Delete"
+                               ng-click="teamDetailsController.deleteTeam($event)"></che-button-danger>
+          </che-label-container>
+        </div>
+      </md-tab-body>
+    </md-tab>
+
+    <!-- Developers Tab -->
+    <md-tab>
+      <md-tab-label>
+        <md-icon md-font-icon="fa-group" class="fa che-tab-label-icon"></md-icon>
+        <span class="che-tab-label-title">Developers</span>
+      </md-tab-label>
+      <md-tab-body>
+        <list-team-members team="teamDetailsController.team" ng-if="teamDetailsController.team"></list-team-members>
+      </md-tab-body>
+    </md-tab>
+
+    <!-- Templates Tab -->
+   <!-- <md-tab>
+      <md-tab-label>
+        <md-icon md-font-icon="fa-briefcase" class="fa che-tab-label-icon"></md-icon>
+        <span class="che-tab-label-title">Templates</span>
+      </md-tab-label>
+      <md-tab-body>
+      </md-tab-body>
+    </md-tab>-->
+
+    <!-- Stacks Tab -->
+    <!--<md-tab>
+      <md-tab-label>
+        <md-icon md-font-icon="fa-archive" class="fa che-tab-label-icon"></md-icon>
+        <span class="che-tab-label-title">Stacks</span>
+      </md-tab-label>
+      <md-tab-body>
+      </md-tab-body>
+    </md-tab>-->
+
+    <!-- Workspaces Tab -->
+    <md-tab>
+      <md-tab-label>
+        <md-icon md-font-icon="chefont cheico-workspace" class="che-tab-label-icon"></md-icon>
+        <span class="che-tab-label-title">Workspaces</span>
+      </md-tab-label>
+      <md-tab-body>
+        <list-team-workspaces team="teamDetailsController.team" ng-if="teamDetailsController.team"></list-team-workspaces>
+      </md-tab-body>
+    </md-tab>
+
+  </md-tabs>
+</md-content>
+<md-content ng-if="teamDetailsController.invalidTeam" flex>
+  Here need to display not found page of team: {{teamDetailsController.teamName}}
+</md-content>

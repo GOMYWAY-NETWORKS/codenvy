@@ -14,14 +14,27 @@
  */
 'use strict';
 
-import {CodenvyApiConfig} from './api/codenvy-api-config';
-import {UniqueTeamNameValidator} from './api/validator/unique-team-name-validator.directive';
+/**
+ * Defines a directive for user item in permissions list.
+ *
+ * @author Ann Shumilova
+ */
+export class MemberItem implements ng.IDirective {
 
-export class CodenvyComponentsConfig {
+  restrict: string = 'E';
+  templateUrl: string = 'app/teams/team-details/team-members/member-item/member-item.html';
+  replace: boolean = false;
 
-  constructor(register) {
-    new CodenvyApiConfig(register);
+  controller: string = 'MemberItemController';
+  controllerAs: string = 'memberItemController';
 
-    register.directive('uniqueTeamName', UniqueTeamNameValidator);
+  bindToController: boolean = true;
+
+  scope: any = {
+    member: '=member',
+    callback: '=callback'
+  };
+
+  constructor() {
   }
 }

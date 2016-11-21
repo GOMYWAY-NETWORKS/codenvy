@@ -367,7 +367,7 @@ export class ShareWorkspaceController {
    * @returns {*}
    */
   handleUserAdding(email) {
-    //Prevents mensioning same users twice:
+    //Prevents mentioning same users twice:
     if (this.existingUsers.has(email)) {
       return null;
     }
