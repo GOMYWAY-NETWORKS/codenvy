@@ -10,14 +10,15 @@
       Codenvy, S.A. - initial API and implementation
 
 -->
-<md-progress-linear md-mode="indeterminate" class="create-team-progress"
-                    ng-show="listTeamMembersController.isLoading"></md-progress-linear>
+<div class="create-team-progress">
+  <md-progress-linear md-mode="indeterminate" ng-show="listTeamMembersController.isLoading"></md-progress-linear>
+</div>
 <md-content flex>
   <che-list-header che-input-placeholder="Search"
                    che-search-model="listTeamMembersController.memberFilter.name"
                    che-hide-search="listTeamMembersController.members.length === 0"
                    che-add-button-title="Add Developer"
-                   che-add-button-href="#/create-member"
+                   che-on-add="listTeamMembersController.showMemberDialog(null)"
                    che-delete-button-title="Delete"
                    che-on-delete="listTeamMembersController.removeSelectedMembers()"
                    che-hide-delete="listTeamMembersController.isNoSelected"

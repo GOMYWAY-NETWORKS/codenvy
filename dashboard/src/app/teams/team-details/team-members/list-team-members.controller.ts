@@ -232,6 +232,79 @@ export class ListTeamMembersController {
   }
 
   /**
+   * Shows dialog for adding new member to the team.
+   */
+  showMemberDialog(member: any): void {
+    this.$mdDialog.show({
+      controller: 'MemberDialogController',
+      controllerAs: 'memberDialogController',
+      bindToController: true,
+      clickOutsideToClose: true,
+      locals: {
+        members: this.members,
+        callbackController: this,
+        member: member
+      },
+      templateUrl: 'app/teams/member-dialog/member-dialog.html'
+    });
+  }
+
+  /**
+   * Add new member to the team.
+   *
+   * @param member member to be added
+   * @param roles member roles
+   */
+  addMember(member: any, roles: Array<any>): void {
+    if (member.id) {
+      let actions = this.codenvyTeam.getActionsFromRoles(roles);
+      let permissions = {
+        instanceId: this.team.id,
+        userId: member.id,
+        domainId: 'organization',
+        actions: actions
+      };
+
+      this.storePermissions(permissions);
+    } else {
+      this.cheNotification.showError('User ' + member.email + ' is not registered in the system.');
+    }
+  }
+
+  /**
+   * Perform edit member permissions.
+   *
+   * @param member
+   */
+  editMember(member: any): void {
+    this.showMemberDialog(member);
+  }
+
+  /**
+   * Performs member's permissions update.
+   *
+   * @param member member to update permissions
+   */
+  updateMember(member: any): void {
+    this.storePermissions(member.permissions);
+  }
+
+  /**
+   * Stores provided permissions.
+   *
+   * @param permissions
+   */
+  storePermissions(permissions: any): void {
+    this.isLoading = true;
+    this.codenvyPermissions.storePermissions(permissions).then(() => {
+      this.fetchMembers();
+    }, (error: any) => {
+      this.isLoading = false;
+      this.cheNotification.showError(error.data && error.data.message ? error.data.message : 'Set user permissions failed.');
+    });
+  }
+
+  /**
    * Remove all selected members.
    */
   removeSelectedMembers(): void {

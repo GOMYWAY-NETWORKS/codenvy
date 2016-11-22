@@ -18,7 +18,7 @@ import {NavbarTeamsController} from './navbar-teams/navbar-teams.controller';
 import {NavbarTeams} from './navbar-teams/navbar-teams.directive';
 
 import {CreateTeamController} from './create-team/create-team.controller';
-import {AddMemberController} from './invite-members/add-member/add-member.controller';
+import {MemberDialogController} from './member-dialog/member-dialog.controller';
 import {ListMembersController} from './invite-members/list-members.controller';
 import {ListMembers} from './invite-members/list-members.directive';
 
@@ -40,7 +40,7 @@ export class TeamsConfig {
     register.directive('navbarTeams', NavbarTeams);
     register.controller('CreateTeamController', CreateTeamController);
 
-    register.controller('AddMemberController', AddMemberController);
+    register.controller('MemberDialogController', MemberDialogController);
     register.controller('ListMembersController', ListMembersController);
     register.directive('listMembers', ListMembers);
 

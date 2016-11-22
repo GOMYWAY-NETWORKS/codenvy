@@ -190,15 +190,16 @@ export class ListMembersController {
   showAddDialog($event: MouseEvent): void {
     this.$mdDialog.show({
       targetEvent: $event,
-      controller: 'AddMemberController',
-      controllerAs: 'addMemberController',
+      controller: 'MemberDialogController',
+      controllerAs: 'memberDialogController',
       bindToController: true,
       clickOutsideToClose: true,
       locals: {
         members: this.members,
+        member: null,
         callbackController: this
       },
-      templateUrl: 'app/teams/invite-members/add-member/add-member.html'
+      templateUrl: 'app/teams/member-dialog/member-dialog.html'
     });
   }
 

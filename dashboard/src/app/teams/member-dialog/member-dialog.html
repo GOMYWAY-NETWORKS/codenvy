@@ -1,0 +1,53 @@
+<che-popup title="{{memberDialogController.title}}" on-close="memberDialogController.hide()">
+  <div class="member-dialog-content">
+    <ng-form flex layout="column" name="memberForm">
+      <che-label-container che-label-name="Email" ng-show="!memberDialogController.member">
+        <che-input-box che-form="memberForm"
+                         che-name="email"
+                         che-place-holder="Enter email"
+                         ng-model="memberDialogController.email"
+                         ng-model-options="{allowInvalid: true}"
+                         ng-disabled="memberDialogController.isProcessing"
+
+                         custom-validator="memberDialogController.isUnique($value)"
+                         type="email"
+                         aria-label="New member"
+                         ng-keypress="memberForm.$valid && $event.which === 13 && memberDialogController.addMember()"
+                         required focusable>
+            <div ng-message="required">A user email is required.</div>
+            <div ng-message="customValidator">User with email {{memberDialogController.email}} is already invited.</div>
+            <div ng-message="email">Invalid email address.</div>
+          </che-input-box>
+      </che-label-container>
+      <che-label-container che-label-name="Permissions" che-label-description="Allowed actions of team member">
+        <div layout="row">
+          <div layout="column" flex="50">
+            <md-switch ng-repeat="roleInfo in memberDialogController.roles" ng-model="roleInfo.allowed"
+                       ng-if="$index % 2 === 1" ng-disabled="memberDialogController.isProcessing">
+              {{roleInfo.role.title}}
+            </md-switch>
+          </div>
+          <div layout="column" flex="50">
+            <md-switch ng-repeat="roleInfo in memberDialogController.roles" ng-model="roleInfo.allowed"
+                       ng-if="$index % 2 === 0" ng-disabled="memberDialogController.isProcessing">
+              {{roleInfo.role.title}}
+            </md-switch>
+          </div>
+        </div>
+      </che-label-container>
+    </ng-form>
+    <div layout="row" layout-align="end center">
+      <che-button-primary che-button-title="{{memberDialogController.buttonTitle}}"
+                          ng-if="!memberDialogController.member"
+                          ng-disabled="memberForm.$invalid || memberDialogController.isProcessing"
+                          ng-click="memberDialogController.addMember()"></che-button-primary>
+      <che-button-primary che-button-title="{{memberDialogController.buttonTitle}}"
+                          ng-disabled="memberDialogController.isProcessing"
+                          ng-if="memberDialogController.member"
+                          ng-click="memberDialogController.editMember()"></che-button-primary>
+      <che-button-cancel-flat che-button-title="Cancel"
+                              ng-click="memberDialogController.hide()"
+                              tabindex="0"></che-button-cancel-flat>
+    </div>
+  </div>
+</che-popup>

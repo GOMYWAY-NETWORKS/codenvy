@@ -53,6 +53,10 @@ export class TeamDetailsController {
    * If <code>true</code> - team with pointed name doesn't exist or cannot be accessed.
    */
   private invalidTeam: boolean;
+  /**
+   * Index of the selected tab.
+   */
+  private selectedTabIndex: number;
 
   /**
    * Default constructor that is using resource injection
@@ -70,16 +74,16 @@ export class TeamDetailsController {
     if (!page) {
       $location.path('/team/' + this.teamName);
     } else {
-      let selectedTabIndex: number = 0;
+      this.selectedTabIndex = 0;
       switch (page) {
         case 'settings':
-          selectedTabIndex = 0;
+          this.selectedTabIndex = 0;
           break;
         case 'developers':
-          selectedTabIndex = 1;
+          this.selectedTabIndex = 1;
           break;
         case 'workspaces':
-          selectedTabIndex = 2;
+          this.selectedTabIndex = 2;
           break;
         default:
           $location.path('/team/' + this.teamName);

@@ -59,6 +59,13 @@ export class MemberItemController {
   }
 
   /**
+   * Handler edit member user's request.
+   */
+  editMember(): void {
+    this.callback.editMember(this.member);
+  }
+
+  /**
    * Returns string with member actions.
    *
    * @returns {string} string format of actions array
