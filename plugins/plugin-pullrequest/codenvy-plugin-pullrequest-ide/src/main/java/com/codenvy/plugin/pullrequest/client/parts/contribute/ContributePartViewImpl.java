@@ -39,7 +39,7 @@ import com.google.gwt.user.client.ui.Widget;
 
 import org.eclipse.che.ide.api.parts.PartStackUIResources;
 import org.eclipse.che.ide.api.parts.base.BaseView;
-import org.eclipse.che.ide.ui.FontAwesome;
+import org.eclipse.che.ide.api.FontAwesome;
 import org.eclipse.che.ide.ui.buttonLoader.ButtonLoaderResources;
 import org.eclipse.che.ide.ui.listbox.CustomListBox;
 import org.vectomatic.dom.svg.ui.SVGPushButton;
