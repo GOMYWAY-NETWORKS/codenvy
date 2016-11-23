@@ -27,14 +27,14 @@ import static java.util.Objects.requireNonNull;
 @Singleton
 public class URLTemplates {
 
-    private static final String SERVERHOST = "http://bitbucket.codenvy-stg.com:7990/";
+    private static final String SERVERHOST = "http://bitbucket.codenvy-stg.com:7990/rest/api/latest/";
     private static final String HOST       = "https://api.bitbucket.org/2.0/";
 
-    private static final String REPOSITORY                = isHosted() ? "/repositories/%s/%s" : "/projects/~%s/repos/%s";
-    private static final String REPOSITORIES              = "/%s/_apis/git/repositories";
-    private static final String PULL_REQUESTS             = "/_apis/git/repositories/%s/pullrequests";
-    private static final String PULL_REQUEST              = "/_apis/git/repositories/%s/pullrequests/%s";
-    private static final String PROJECT_REPO_PULL_REQUEST = "/%s/_apis/git/repositories/%s/pullrequests/%s";
+    private static final String REPOSITORY                = isHosted() ? "repositories/%s/%s" : "projects/~%s/repos/%s";
+    private static final String REPOSITORIES              = "%s/_apis/git/repositories";
+    private static final String PULL_REQUESTS             = "_apis/git/repositories/%s/pullrequests";
+    private static final String PULL_REQUEST              = "_apis/git/repositories/%s/pullrequests/%s";
+    private static final String PROJECT_REPO_PULL_REQUEST = "%s/_apis/git/repositories/%s/pullrequests/%s";
 
     public static final String PROFILE = "/_apis/profile/profiles/me";
 
@@ -57,13 +57,20 @@ public class URLTemplates {
         requireNonNull(project, "Project name required");
         requireNonNull(repoName, "Repository name required");
 
-        return format(REPOSITORY, project, repoName);
+        return format(SERVERHOST + REPOSITORY, project, repoName);
     }
 
     public String userUrl(String username) {
         requireNonNull(username, "User name required");
 
-        return SERVERHOST + "rest/api/latest/users/" + username;
+        return SERVERHOST + "users/" + username;
+    }
+
+    public String pullrequestsPage(String project, String repoName) {
+        requireNonNull(project, "Project name required");
+        requireNonNull(repoName, "Repository name required");
+
+        return format(SERVERHOST + REPOSITORY + "/pull-requests", project, repoName);
     }
 
     private static boolean isHosted() {

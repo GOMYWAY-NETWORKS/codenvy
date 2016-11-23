@@ -19,33 +19,13 @@ import org.eclipse.che.dto.shared.DTO;
 import java.util.List;
 
 /**
- * Represents a Bitbucket user.
+ * Represents a pull requests page in the Bitbucket API.
  *
  * @author Kevin Pollet
  */
 @DTO
-public interface BitbucketServerUser {
-    String getName();
+public interface BitbucketServerPullRequestsPage extends BitbucketPullRequestsPage{
+    int getLimit();
 
-    void setName(String name);
-
-
-    String getDisplayName();
-
-    void setDisplayName(String displayName);
-
-    String getId();
-
-    void setId(String id);
-
-    BitbucketServerUserLinks getLinks();
-
-    void setLinks(BitbucketServerUserLinks links);
-
-    @DTO
-    interface BitbucketServerUserLinks {
-        List<BitbucketLink> getSelf();
-
-        void setSelf(List<BitbucketLink> self);
-    }
+    void setLimit(int limit);
 }

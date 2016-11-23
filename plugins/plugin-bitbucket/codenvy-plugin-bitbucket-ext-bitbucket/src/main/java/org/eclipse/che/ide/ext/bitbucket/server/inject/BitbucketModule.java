@@ -20,6 +20,7 @@ import com.google.inject.multibindings.Multibinder;
 import org.eclipse.che.api.project.server.importer.ProjectImporter;
 import org.eclipse.che.ide.ext.bitbucket.server.Bitbucket;
 import org.eclipse.che.ide.ext.bitbucket.server.BitbucketProjectImporter;
+import org.eclipse.che.ide.ext.bitbucket.server.BitbucketServerOAuthAuthenticator;
 import org.eclipse.che.ide.ext.bitbucket.server.rest.BitbucketExceptionMapper;
 import org.eclipse.che.ide.ext.bitbucket.server.rest.BitbucketService;
 import org.eclipse.che.inject.DynaModule;
@@ -38,6 +39,7 @@ public class BitbucketModule extends AbstractModule {
         bind(Bitbucket.class);
         bind(BitbucketService.class);
         bind(BitbucketExceptionMapper.class);
+        bind(BitbucketServerOAuthAuthenticator.class);
 
         Multibinder.newSetBinder(binder(), ProjectImporter.class).addBinding().to(BitbucketProjectImporter.class);
         //Multibinder.newSetBinder(binder(), SshKeyUploader.class).addBinding().to(BitbucketKeyUploader.class);

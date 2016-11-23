@@ -266,7 +266,9 @@ public class BitbucketHostingService implements VcsHostingService {
     @Override
     public String getRepositoryNameFromUrl(@NotNull final String url) {
         String result;
-        if (SSH_URL_REGEXP.test(url)) {
+        if (url.contains("/~")) {
+            result = url.substring(url.lastIndexOf("/") + 1);
+        } else if (SSH_URL_REGEXP.test(url)) {
             result = SSH_URL_REGEXP.exec(url).getGroup(2);
         } else {
             result = HTTPS_URL_REGEXP.exec(url).getGroup(3);
@@ -281,6 +283,10 @@ public class BitbucketHostingService implements VcsHostingService {
     @NotNull
     @Override
     public String getRepositoryOwnerFromUrl(@NotNull final String url) {
+        if (url.contains("/~")) {
+            String result = url.substring(url.indexOf("~"));
+            return result.substring(1, result.indexOf("/"));
+        } else
         if (SSH_URL_REGEXP.test(url)) {
             return SSH_URL_REGEXP.exec(url).getGroup(1);
         }
@@ -309,10 +315,11 @@ public class BitbucketHostingService implements VcsHostingService {
 
     @Override
     public Promise<HostUser> getUserInfo() {
-        return bitbucketClientService.getUser("ivinokur")
+        return bitbucketClientService.getUser(getRepositoryOwnerFromUrl(remoteUrl))
                                      .then(new Function<BitbucketUser, HostUser>() {
                                          @Override
                                          public HostUser apply(BitbucketUser user) throws FunctionException {
+
                                              return dtoFactory.createDto(HostUser.class)
                                                               .withId(user.getUuid())
                                                               .withName(user.getDisplayName())
@@ -360,7 +367,7 @@ public class BitbucketHostingService implements VcsHostingService {
         bitbucketClientService.getToken().then(new Operation<String>() {
             @Override
             public void apply(String token) throws OperationException {
-
+                String tok = token;
             }
         });
         final String authUrl = baseUrl
@@ -370,6 +377,7 @@ public class BitbucketHostingService implements VcsHostingService {
                                + Window.Location.getHost() + "/ws/"
                                + workspace.getConfig().getName();
         return ServiceUtil.performWindowAuth(this, authUrl);
+//        return Promises.reject(null);
     }
 
     @Override

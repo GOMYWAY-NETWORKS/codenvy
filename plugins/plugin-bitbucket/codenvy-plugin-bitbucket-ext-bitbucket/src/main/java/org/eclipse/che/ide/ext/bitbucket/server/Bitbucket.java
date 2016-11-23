@@ -38,13 +38,17 @@ import org.eclipse.che.commons.env.EnvironmentContext;
 import org.eclipse.che.commons.json.JsonHelper;
 import org.eclipse.che.commons.json.JsonParseException;
 import org.eclipse.che.dto.server.DtoFactory;
+import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketLink;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketPullRequest;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketPullRequestsPage;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketRepositoriesPage;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketRepository;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketRepositoryFork;
+import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketServerPullRequestsPage;
+import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketServerRepository;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketServerUser;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketUser;
+import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketUser.BitbucketUserLinks;
 
 import javax.validation.constraints.NotNull;
 import javax.inject.Inject;
@@ -95,9 +99,7 @@ public class Bitbucket {
         //final String response = getJson(BITBUCKET_2_0_API_URL + "/user", OK);
         String userUrl = urlTemplates.userUrl(username);
         final String response = getJson(userUrl, OK);
-        BitbucketServerUser user = parseJsonResponse(response, BitbucketServerUser.class);
-
-        return newDto(BitbucketUser.class);
+        return convertToBitbucketUser(parseJsonResponse(response, BitbucketServerUser.class));
     }
 
     /**
@@ -120,7 +122,7 @@ public class Bitbucket {
     public BitbucketRepository getRepository(@NotNull final String owner, @NotNull final String repositorySlug)
             throws IOException, BitbucketException, ServerException, IllegalArgumentException {
         final String response = getJson(urlTemplates.repositoryUrl(owner, repositorySlug), OK);
-        return parseJsonResponse(response, BitbucketRepository.class);
+        return convertToBitbucketRepository(parseJsonResponse(response, BitbucketServerRepository.class));
     }
 
     /**
@@ -220,16 +222,14 @@ public class Bitbucket {
         checkArgument(!isNullOrEmpty(repositorySlug), "repositorySlug");
 
         final List<BitbucketPullRequest> pullRequests = new ArrayList<>();
-        BitbucketPullRequestsPage pullRequestsPage = DtoFactory.getInstance().createDto(BitbucketPullRequestsPage.class);
+        BitbucketServerPullRequestsPage pullRequestsPage = DtoFactory.getInstance().createDto(BitbucketServerPullRequestsPage.class);
 
         do {
 
             final String nextPageUrl = pullRequestsPage.getNext();
-            final String url =
-                    nextPageUrl == null ? BITBUCKET_2_0_API_URL + "/repositories/" + owner + "/" + repositorySlug + "/pullrequests"
-                                        : nextPageUrl;
+            final String url = nextPageUrl == null ? urlTemplates.pullrequestsPage(owner, repositorySlug) : nextPageUrl;
 
-            pullRequestsPage = getBitbucketPage(url, BitbucketPullRequestsPage.class);
+            pullRequestsPage = getBitbucketPage(url, BitbucketServerPullRequestsPage.class);
             pullRequests.addAll(pullRequestsPage.getValues());
 
         } while (pullRequestsPage.getNext() != null);
@@ -383,5 +383,34 @@ public class Bitbucket {
 
     private String getUserId() {
         return EnvironmentContext.getCurrent().getSubject().getUserId();
+    }
+
+    private BitbucketUser convertToBitbucketUser(BitbucketServerUser bitbucketServerUser) {
+        BitbucketUser bitbucketUser = newDto(BitbucketUser.class);
+        BitbucketUserLinks bitbucketUserLinks = newDto(BitbucketUserLinks.class);
+        BitbucketLink bitbucketLink = newDto(BitbucketLink.class);
+
+        bitbucketUser.setUsername(bitbucketServerUser.getName());
+        bitbucketUser.setDisplayName(bitbucketServerUser.getDisplayName());
+        bitbucketUser.setUuid(bitbucketServerUser.getId());
+
+        bitbucketLink.setHref(bitbucketServerUser.getLinks().getSelf().get(0).getHref());
+        bitbucketLink.setName(bitbucketServerUser.getLinks().getSelf().get(0).getName());
+
+        bitbucketUserLinks.setSelf(bitbucketLink);
+        bitbucketUser.setLinks(bitbucketUserLinks);
+
+        return bitbucketUser;
+    }
+
+    private BitbucketRepository convertToBitbucketRepository(BitbucketServerRepository bitbucketServerRepository) {
+        bitbucketServerRepository.setFullName(bitbucketServerRepository.getName());
+        bitbucketServerRepository.setParent(bitbucketServerRepository.getOrigin() == null ? null :
+                                      convertToBitbucketRepository(bitbucketServerRepository.getOrigin()));
+//        bitbucketRepository.setIsPrivate(bitbucketServerRepository.isPublic());
+        BitbucketServerUser owner = bitbucketServerRepository.getProject().getOwner();
+        bitbucketServerRepository.setOwner(owner == null ? null : convertToBitbucketUser(owner));
+
+        return bitbucketServerRepository;
     }
 }

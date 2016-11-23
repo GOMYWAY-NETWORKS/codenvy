@@ -30,10 +30,13 @@ import org.eclipse.che.api.ssh.shared.model.SshPair;
 import org.eclipse.che.ide.ext.bitbucket.server.Bitbucket;
 import org.eclipse.che.ide.ext.bitbucket.server.BitbucketException;
 import org.eclipse.che.ide.ext.bitbucket.server.BitbucketKeyUploader;
+import org.eclipse.che.ide.ext.bitbucket.server.BitbucketServerOAuthAuthenticator;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketPullRequest;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketRepository;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketRepositoryFork;
 import org.eclipse.che.ide.ext.bitbucket.shared.BitbucketUser;
+import org.eclipse.che.security.oauth.OAuthAuthenticationException;
+import org.eclipse.che.security.oauth.OAuthAuthenticator;
 
 import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
@@ -45,13 +48,24 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLDecoder;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.eclipse.che.dto.server.DtoFactory.newDto;
@@ -65,31 +79,17 @@ import static org.eclipse.che.dto.server.DtoFactory.newDto;
 public class BitbucketService {
     private final Bitbucket            bitbucket;
     private final BitbucketKeyUploader bitbucketKeyUploader;
-    private final SshServiceClient     sshServiceClient;
-
-    private String privateKey         = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBALhmj0yajPtj4Dug\n" +
-                                        "JvAiMopt8p25Dx7TJFhml/28WOmwaCDOva6PcJhxJNgJK9Gnc9QHQRDLcMiQriCQ\n" +
-                                        "wUG+df7Ip8kyjmCn2gljiFhGk3bmpzHPabOVJM8BiQVdif0hyjB8pjPKZ060JoY0\n" +
-                                        "Q5Ftnmeze93gCcUfn9jxMPrdwJ5BAgMBAAECgYAzVfIM7HXVQp/ZWaOddJfHbAaA\n" +
-                                        "HFX2SeezaJRlwjqqjD7g601pPGunNNCCCEOXsVuQqphVmZ2DaKvhSwtSRzjHxRRN\n" +
-                                        "yAzOR36Z6W/ALbqJq6Z8R754E0XTKdUKg3GmJ2G09czlrFauv8tc1Jw/UpKgP6JA\n" +
-                                        "u51+KFhwt5WqsizYcQJBAO2v0P6kxG1g1RgiZxomLNzbvouCYRDmXwsk0NymvbCy\n" +
-                                        "71GeWg0LSAEwAfu0KqxbXTWUmblabhJ8FIL9LpeeaZUCQQDGm7dRPl5N6Izt6aw7\n" +
-                                        "OEYJZlBk9vg+Qek2E4x1YTnXxf6uUq/BQVLP1nJC5myQ/sDhWYun+soKJIYsayIa\n" +
-                                        "8679AkEA0ftjXbPevOqxF5M9FsLnG28e1U0nx7BeAxBRXL4KExLhjm+hCqkOwc3R\n" +
-                                        "0raGhKJqpC1V6YRUfgwUauyVvuj6SQJAQ3MEudm1iz3sBqxyKpZ86ppNuUxKmFIo\n" +
-                                        "Eo5nCEIhs87xJGC+gaJermkE2wWIX2G1PZL8o+q/DNzEmHc12PNjPQJBANyJJW3E\n" +
-                                        "NmPbPBo56PD6mFNuZiR2nUymH/P9vu9gm58qofshqOwe/wGJB0Q9sqp86oW3eRFd\n" +
-                                        "0191X1dDSH/gLr8=";
-    private String oauth_consumer_key = "hardcoded-consumer";
-    private String requestUrl         = "http://bitbucket.codenvy-stg.com:7990/plugins/servlet/oauth/request-token";
+    private final BitbucketServerOAuthAuthenticator oAuthAuthenticator;
+    private final SshServiceClient sshServiceClient;
 
     @Inject
     public BitbucketService(@NotNull final Bitbucket bitbucket,
                             @NotNull final BitbucketKeyUploader bitbucketKeyUploader,
+                            @NotNull final BitbucketServerOAuthAuthenticator oAuthAuthenticator,
                             @NotNull final SshServiceClient sshServiceClient) {
         this.bitbucket = bitbucket;
         this.bitbucketKeyUploader = bitbucketKeyUploader;
+        this.oAuthAuthenticator = oAuthAuthenticator;
         this.sshServiceClient = sshServiceClient;
     }
 
@@ -104,26 +104,97 @@ public class BitbucketService {
     }
 
     @GET
-    @Path("host")
-    public String getHost() {
-        return "http://bitbucket.codenvy-stg.com:7990";
+    @Path("authenticate")
+    public Response authenticate(@Context UriInfo uriInfo)
+            throws OAuthAuthenticationException, InvalidKeySpecException, NoSuchAlgorithmException {
+        final URL requestUrl = getRequestUrl(uriInfo);
+        final String authUrl = oAuthAuthenticator.getAuthenticateUrl(requestUrl);
+
+        return Response.temporaryRedirect(URI.create(authUrl)).build();
+    }
+
+    protected URL getRequestUrl(UriInfo uriInfo) {
+        try {
+            return uriInfo.getRequestUri().toURL();
+        } catch (MalformedURLException e) {
+            // should never happen
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 
     @GET
-    @Path("token")
-    public String getToken(@QueryParam("callback") final String callback)
-            throws InvalidKeySpecException, NoSuchAlgorithmException, IOException {
-        OAuthRsaSigner signer = new OAuthRsaSigner();
-        signer.privateKey = getPrivateKey(privateKey);
-        BitBucketOAuthGetTemporaryToken getTemporaryToken = new BitBucketOAuthGetTemporaryToken(requestUrl);
-        getTemporaryToken.signer = signer;
-        getTemporaryToken.consumerKey = oauth_consumer_key;
-        getTemporaryToken.callback = callback;
-        getTemporaryToken.transport = new NetHttpTransport();
+    @Path("callback")
+    public Response callback(@Context UriInfo uriInfo)
+            throws OAuthAuthenticationException, InvalidKeySpecException, NoSuchAlgorithmException {
+        final URL requestUrl = getRequestUrl(uriInfo);
+        final Map<String, List<String>> params = getRequestParameters(getState(requestUrl));
 
-        OAuthCredentialsResponse response = getTemporaryToken.execute();
+        oAuthAuthenticator.callback(requestUrl);
 
-        return response.token;
+        final String redirectAfterLogin = getParameter(params, "redirect_after_login");
+        return Response.temporaryRedirect(URI.create(redirectAfterLogin)).build();
+    }
+
+    protected String getParameter(Map<String, List<String>> params, String name) {
+        List<String> l = params.get(name);
+        if (!(l == null || l.isEmpty())) {
+            return l.get(0);
+        }
+        return null;
+    }
+
+    protected String getState(URL requestUrl) {
+        final String query = requestUrl.getQuery();
+        if (!(query == null || query.isEmpty())) {
+            int start = query.indexOf("state=");
+            if (start < 0) {
+                return null;
+            }
+            int end = query.indexOf('&', start);
+            if (end < 0) {
+                end = query.length();
+            }
+            return query.substring(start + 6, end);
+        }
+        return null;
+    }
+
+    protected Map<String, List<String>> getRequestParameters(String state) {
+        Map<String, List<String>> params = new HashMap<>();
+        if (!(state == null || state.isEmpty())) {
+            String decodedState;
+            try {
+                decodedState = URLDecoder.decode(state, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                // should never happen, UTF-8 supported.
+                throw new RuntimeException(e.getMessage(), e);
+            }
+
+            for (String pair : decodedState.split("&")) {
+                if (!pair.isEmpty()) {
+                    String name;
+                    String value;
+                    int eq = pair.indexOf('=');
+                    if (eq < 0) {
+                        name = pair;
+                        value = "";
+                    } else {
+                        name = pair.substring(0, eq);
+                        value = pair.substring(eq + 1);
+                    }
+
+                    List<String> l = params.computeIfAbsent(name, k -> new ArrayList<>());
+                    l.add(value);
+                }
+            }
+        }
+        return params;
+    }
+
+    @GET
+    @Path("host")
+    public String getHost() {
+        return "http://bitbucket.codenvy-stg.com:7990";
     }
 
     private PrivateKey getPrivateKey(String privateKey) throws NoSuchAlgorithmException, InvalidKeySpecException {

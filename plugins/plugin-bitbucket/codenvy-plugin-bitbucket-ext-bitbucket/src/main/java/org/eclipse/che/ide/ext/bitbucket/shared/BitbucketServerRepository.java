@@ -16,36 +16,26 @@ package org.eclipse.che.ide.ext.bitbucket.shared;
 
 import org.eclipse.che.dto.shared.DTO;
 
-import java.util.List;
-
 /**
- * Represents a Bitbucket user.
+ * Represents a Bitbucket repository.
  *
  * @author Kevin Pollet
  */
 @DTO
-public interface BitbucketServerUser {
-    String getName();
+public interface BitbucketServerRepository extends BitbucketRepository{
 
-    void setName(String name);
+    BitbucketServerRepository getOrigin();
 
+    void setOrigin(BitbucketServerRepository parent);
 
-    String getDisplayName();
+    BitbucketServerProject getProject();
 
-    void setDisplayName(String displayName);
-
-    String getId();
-
-    void setId(String id);
-
-    BitbucketServerUserLinks getLinks();
-
-    void setLinks(BitbucketServerUserLinks links);
+    void setProject(BitbucketServerProject project);
 
     @DTO
-    interface BitbucketServerUserLinks {
-        List<BitbucketLink> getSelf();
+    interface BitbucketServerProject {
+        BitbucketServerUser getOwner();
 
-        void setSelf(List<BitbucketLink> self);
+        void setOwner(BitbucketServerUser user);
     }
 }
