@@ -15,6 +15,8 @@
 package org.eclipse.che.ide.ext.bitbucket.server.rest;
 
 
+import com.google.api.client.auth.oauth.OAuthAuthorizeTemporaryTokenUrl;
+import com.google.api.client.auth.oauth.OAuthCallbackUrl;
 import com.google.api.client.auth.oauth.OAuthCredentialsResponse;
 import com.google.api.client.auth.oauth.OAuthGetAccessToken;
 import com.google.api.client.auth.oauth.OAuthGetTemporaryToken;
@@ -52,36 +54,44 @@ public class Main {
     private static String oauth_consumer_key = "consumer123456";
     private static String requestUrl         = "http://bitbucket.codenvy-stg.com:7990/plugins/servlet/oauth/request-token";
     private static String accessUrl          = "http://bitbucket.codenvy-stg.com:7990/plugins/servlet/oauth/access-token";
+    private static String authUrl            = "http://bitbucket.codenvy-stg.com:7990/plugins/servlet/oauth/authorize";
 
 
     public static void main(String[] args) throws InvalidKeySpecException, NoSuchAlgorithmException, IOException {
         BitBucketOAuthGetTemporaryToken getTemporaryToken = new BitBucketOAuthGetTemporaryToken(requestUrl);
         getTemporaryToken.signer = getOAuthRsaSigner(privateKey);
         getTemporaryToken.consumerKey = oauth_consumer_key;
-        getTemporaryToken.callback = "http://aio.codenvy-dev.com?oauth_verifier=0352671347&oauth_token=QAx6g4npas3tdARQUY";
+        getTemporaryToken.callback = "http://localhost";
         getTemporaryToken.transport = new NetHttpTransport();
 
-        OAuthCredentialsResponse response = getTemporaryToken.execute();
+
+        OAuthCredentialsResponse temporaryTokenResponse = getTemporaryToken.execute();
+
+        OAuthAuthorizeTemporaryTokenUrl authorizeTemporaryTokenUrl = new OAuthAuthorizeTemporaryTokenUrl(authUrl);
+        authorizeTemporaryTokenUrl.temporaryToken = temporaryTokenResponse.token;
+        authorizeTemporaryTokenUrl.build();
+
 
         BitBucketOAuthGetAccessToken oAuthGetAccessToken = new BitBucketOAuthGetAccessToken(accessUrl);
         oAuthGetAccessToken.signer = getOAuthRsaSigner(privateKey);
         oAuthGetAccessToken.consumerKey = oauth_consumer_key;
-        oAuthGetAccessToken.temporaryToken = response.token;
+        oAuthGetAccessToken.temporaryToken = temporaryTokenResponse.token;
         oAuthGetAccessToken.transport = new NetHttpTransport();
-        oAuthGetAccessToken.verifier = "0352671347";
+        oAuthGetAccessToken.verifier = "ogfbTa";
 
-        OAuthCredentialsResponse execute = oAuthGetAccessToken.execute();
+        OAuthCredentialsResponse accessTokenResponse = oAuthGetAccessToken.execute();
 
         OAuthParameters oauthParameters = new OAuthParameters();
         oauthParameters.consumerKey = oauth_consumer_key;
         oauthParameters.signer = getOAuthRsaSigner(privateKey);
-        oauthParameters.token = "cwc1LeUncMSSMF2xvm8xJ7PvkhUvaraH";
+        oauthParameters.token = accessTokenResponse.token;
         oauthParameters.version = "1.0";
 
         oauthParameters.computeNonce();
         oauthParameters.computeTimestamp();
 
-        final GenericUrl genericRequestUrl = new GenericUrl("http://bitbucket.codenvy-stg.com:7990/rest/api/latest/projects/~IVINOKUR/repos/test/pull-requests");
+        final GenericUrl genericRequestUrl =
+                new GenericUrl("http://bitbucket.codenvy-stg.com:7990/rest/api/latest/projects/~IVINOKUR/repos/test/pull-requests");
 
         try {
 

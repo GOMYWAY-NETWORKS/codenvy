@@ -4,11 +4,9 @@
 # are made available under the terms of the Eclipse Public License v1.0
 # which accompanies this distribution, and is available at
 # http://www.eclipse.org/legal/epl-v10.html
-#
 
-cp -rf /files/docs /copy
+IMAGE_NAME="codenvy/init"
+. $(cd "$(dirname "$0")"; pwd)/../build.include
 
-# do not copy codenvy.env if exist
-if [ ! -f  /copy/codenvy.env ]; then
-    cp /etc/puppet/manifests/codenvy.env /copy
-fi
+init
+build

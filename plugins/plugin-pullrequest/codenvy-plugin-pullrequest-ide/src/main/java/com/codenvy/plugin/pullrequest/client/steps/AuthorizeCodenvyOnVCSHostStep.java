@@ -66,6 +66,7 @@ public class AuthorizeCodenvyOnVCSHostStep implements Step {
         return new Operation<HostUser>() {
             @Override
             public void apply(HostUser user) throws OperationException {
+                authenticate(executor, context);
                 context.setHostUserLogin(user.getLogin());
                 executor.done(AuthorizeCodenvyOnVCSHostStep.this, context);
             }
