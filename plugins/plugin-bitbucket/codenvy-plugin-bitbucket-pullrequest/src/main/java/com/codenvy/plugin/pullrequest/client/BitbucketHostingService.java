@@ -370,9 +370,9 @@ public class BitbucketHostingService implements VcsHostingService {
                 String tok = token;
             }
         });
-        final String authUrl = "http://aio.codenvy-dev.com" + baseUrl
-                               + "/oauth/authenticate?oauth_provider=bitbucket&userId=" + user.getProfile().getUserId()
-                               + "&redirect_after_login=" + "http://aio.codenvy-dev.com" + baseUrl + "/oauth/callback";
+        final String authUrl = "http://aio.codenvy-dev.com/" + baseUrl
+                               + "/oauth/authenticate?oauth_provider=bitbucket-server&userId=" + user.getProfile().getUserId()
+                               + "&redirect_after_login=" + "http://aio.codenvy-dev.com/" + baseUrl + "/oauth/callback";
         return ServiceUtil.performWindowAuth(this, authUrl);
 //        return Promises.reject(null);
     }

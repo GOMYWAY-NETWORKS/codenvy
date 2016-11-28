@@ -30,5 +30,6 @@ public class BitbucketModule extends AbstractModule {
     protected void configure() {
         Multibinder<OAuthAuthenticator> oAuthAuthenticators = Multibinder.newSetBinder(binder(), OAuthAuthenticator.class);
         oAuthAuthenticators.addBinding().to(BitbucketOAuthAuthenticator.class);
+        oAuthAuthenticators.addBinding().to(BitbucketServerOAuthAuthenticator.class);
     }
 }

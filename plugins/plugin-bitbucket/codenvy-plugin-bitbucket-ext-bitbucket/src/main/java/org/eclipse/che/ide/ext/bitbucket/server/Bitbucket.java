@@ -301,7 +301,7 @@ public class Bitbucket {
                 }
             }
 
-            final OAuthToken token = tokenProvider.getToken("bitbucket", getUserId());
+            final OAuthToken token = tokenProvider.getToken("bitbucket-server", getUserId());
             if (token != null) {
                 http.setRequestProperty(AUTHORIZATION, "Bearer " +  token.getToken());
             }
