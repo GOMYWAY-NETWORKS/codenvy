@@ -20,6 +20,7 @@ import org.eclipse.che.api.core.BadRequestException;
 import org.eclipse.che.security.oauth.OAuthAuthenticationException;
 import org.eclipse.che.security.oauth.OAuthAuthenticationService;
 import org.eclipse.che.security.oauth.OAuthAuthenticator;
+import org.eclipse.che.security.oauth.OAuthAuthenticatorProvider;
 
 import javax.inject.Inject;
 import javax.ws.rs.GET;
@@ -27,6 +28,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URL;
@@ -43,8 +45,12 @@ import java.util.Map;
  */
 @Path("oauth")
 public class SsoOAuthAuthenticationService extends OAuthAuthenticationService {
+
     @Inject
-    BearerTokenAuthenticationHandler authenticationHandler;
+    private BearerTokenAuthenticationHandler authenticationHandler;
+
+    @Inject
+    private OAuthAuthenticatorProvider oAuthAuthenticatorProvider;
 
     @GET
     @Path("callback")
@@ -81,6 +87,20 @@ public class SsoOAuthAuthenticationService extends OAuthAuthenticationService {
 
         }
         return Response.temporaryRedirect(URI.create(redirectAfterLogin)).build();
+    }
+
+    @GET
+    @Path("header")
+    public String getAuthorizationHeader(@QueryParam("provider_name") String oauthProviderName,
+                                         @QueryParam("method") String requestMethod,
+                                         @QueryParam("url") String requestUrl,
+                                         @QueryParam("token") String token) throws IOException {
+
+        final OAuthAuthenticator oAuthAuthenticator = oAuthAuthenticatorProvider.getAuthenticator(oauthProviderName);
+        if (oAuthAuthenticator != null) {
+            return oAuthAuthenticator.computeAuthorizationHeader(requestMethod, requestUrl, token);
+        }
+        return null;
     }
 
 }

@@ -18,30 +18,22 @@ import com.google.api.client.auth.oauth.OAuthAuthorizeTemporaryTokenUrl;
 import com.google.api.client.auth.oauth.OAuthCredentialsResponse;
 import com.google.api.client.auth.oauth.OAuthGetAccessToken;
 import com.google.api.client.auth.oauth.OAuthGetTemporaryToken;
-import com.google.api.client.auth.oauth.OAuthHmacSigner;
 import com.google.api.client.auth.oauth.OAuthParameters;
 import com.google.api.client.auth.oauth.OAuthRsaSigner;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.util.Base64;
-import com.google.api.client.util.store.MemoryDataStoreFactory;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 
 import org.eclipse.che.api.auth.shared.dto.OAuthToken;
 import org.eclipse.che.commons.annotation.Nullable;
-import org.eclipse.che.commons.json.JsonHelper;
-import org.eclipse.che.commons.json.JsonParseException;
-import org.eclipse.che.commons.lang.IoUtil;
 import org.eclipse.che.security.oauth.shared.User;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -57,9 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.net.URLDecoder.decode;
-import static java.util.Collections.emptyMap;
 import static javax.ws.rs.HttpMethod.GET;
 import static javax.ws.rs.core.HttpHeaders.AUTHORIZATION;
 import static org.eclipse.che.dto.server.DtoFactory.newDto;
@@ -67,7 +57,7 @@ import static org.eclipse.che.dto.server.DtoFactory.newDto;
 /**
  * OAuth authentication for Bitbucket account.
  *
- * @author Michail Kuznyetsov
+ * @author Igor Vinokur
  */
 @Singleton
 public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
@@ -76,86 +66,40 @@ public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
     private static final String OAUTH_TOKEN_PARAM_KEY    = "oauth_token";
     private static final String OAUTH_VERIFIER_PARAM_KEY = "oauth_verifier";
 
-    private static final Logger LOG = LoggerFactory.getLogger(BitbucketServerOAuthAuthenticator.class);
-
-    private final String                                userUri;
-    private final String                                clientId;
-    private final String                                clientSecret;
     private final String                                authTokenUri;
     private final String                                requestTokenUri;
+    private final String                                privateKey;
+    private final String                                consumerKey;
     private final String                                accessTokenUri;
+    private final String                                verifyAccessTokenUri;
     private final ReentrantLock                         credentialsStoreLock;
     private final HttpTransport                         httpTransport;
-    private final Map<String, String>                   sharedTokenSecrets;
     private final Map<String, OAuthCredentialsResponse> credentialsStore;
 
-    @Inject(optional = true)
-    @Named("oauth.bitbucket.privateKey")
-    String privateKey = "MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBALhmj0yajPtj4Dug\n" +
-                        "JvAiMopt8p25Dx7TJFhml/28WOmwaCDOva6PcJhxJNgJK9Gnc9QHQRDLcMiQriCQ\n" +
-                        "wUG+df7Ip8kyjmCn2gljiFhGk3bmpzHPabOVJM8BiQVdif0hyjB8pjPKZ060JoY0\n" +
-                        "Q5Ftnmeze93gCcUfn9jxMPrdwJ5BAgMBAAECgYAzVfIM7HXVQp/ZWaOddJfHbAaA\n" +
-                        "HFX2SeezaJRlwjqqjD7g601pPGunNNCCCEOXsVuQqphVmZ2DaKvhSwtSRzjHxRRN\n" +
-                        "yAzOR36Z6W/ALbqJq6Z8R754E0XTKdUKg3GmJ2G09czlrFauv8tc1Jw/UpKgP6JA\n" +
-                        "u51+KFhwt5WqsizYcQJBAO2v0P6kxG1g1RgiZxomLNzbvouCYRDmXwsk0NymvbCy\n" +
-                        "71GeWg0LSAEwAfu0KqxbXTWUmblabhJ8FIL9LpeeaZUCQQDGm7dRPl5N6Izt6aw7\n" +
-                        "OEYJZlBk9vg+Qek2E4x1YTnXxf6uUq/BQVLP1nJC5myQ/sDhWYun+soKJIYsayIa\n" +
-                        "8679AkEA0ftjXbPevOqxF5M9FsLnG28e1U0nx7BeAxBRXL4KExLhjm+hCqkOwc3R\n" +
-                        "0raGhKJqpC1V6YRUfgwUauyVvuj6SQJAQ3MEudm1iz3sBqxyKpZ86ppNuUxKmFIo\n" +
-                        "Eo5nCEIhs87xJGC+gaJermkE2wWIX2G1PZL8o+q/DNzEmHc12PNjPQJBANyJJW3E\n" +
-                        "NmPbPBo56PD6mFNuZiR2nUymH/P9vu9gm58qofshqOwe/wGJB0Q9sqp86oW3eRFd\n" +
-                        "0191X1dDSH/gLr8=";
-
     @Inject
-    public BitbucketServerOAuthAuthenticator(@Nullable @Named("oauth.bitbucket.clientid") String clientId,
-                                             @Nullable @Named("oauth.bitbucket.clientsecret") String clientSecret,
-                                             @Nullable @Named("oauth.bitbucket.redirecturis") String[] redirectUris,
-                                             @Nullable @Named("oauth.bitbucket.useruri") String userUri,
-                                             @Nullable @Named("oauth.bitbucket.authTokenUri") String authTokenUri,
-                                             @Nullable @Named("oauth.bitbucket.requestTokenUri") String requestTokenUri,
+    public BitbucketServerOAuthAuthenticator(@Nullable @Named("oauth.bitbucket.verifyaccesstokenuri") String verifyAccessTokenUri,
+                                             @Nullable @Named("oauth.bitbucket.authtokenuri") String authTokenUri,
+                                             @Nullable @Named("oauth.bitbucket.requesttokenuri") String requestTokenUri,
+                                             @Nullable @Named("oauth.bitbucket.privatekey") String privateKey,
+                                             @Nullable @Named("oauth.bitbucket.consumerkey") String consumerKey,
                                              @Nullable @Named("oauth.bitbucket.acessTokenuri") String accessTokenUri) throws IOException {
-        super();
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
         this.authTokenUri = authTokenUri;
         this.requestTokenUri = requestTokenUri;
+        this.privateKey = privateKey;
+        this.consumerKey = consumerKey;
         this.accessTokenUri = accessTokenUri;
-        if (!isNullOrEmpty(clientId)
-            && !isNullOrEmpty(clientSecret)
-            && !isNullOrEmpty(authTokenUri)
-            && !isNullOrEmpty(accessTokenUri)
-            && redirectUris != null && redirectUris.length != 0) {
-
-            configure(clientId, clientSecret, redirectUris, authTokenUri, accessTokenUri, new MemoryDataStoreFactory());
-        }
-        this.userUri = userUri;
         this.httpTransport = new NetHttpTransport();
-        this.sharedTokenSecrets = new HashMap<>();
         this.credentialsStore = new HashMap<>();
         this.credentialsStoreLock = new ReentrantLock();
+        this.verifyAccessTokenUri = verifyAccessTokenUri;
     }
 
     @Override
-    public User getUser(OAuthToken accessToken) throws OAuthAuthenticationException {
-        Map<String, String> params = new HashMap<>();
-        params.put("Authorization", "Bearer " + accessToken.getToken());
-        try {
-            BitbucketUser user = doRequest(new URL(userUri), BitbucketUser.class, params);
-
-            BitbucketEmail[] emails = doRequest(new URL("https://bitbucket.org/api/1.0/emails"), BitbucketEmail[].class, params);
-
-            for (final BitbucketEmail oneEmail : emails) {
-                if (oneEmail.isPrimary()) {
-                    user.setEmail(oneEmail.getEmail());
-                    break;
-                }
-            }
-            return user;
-        } catch (JsonParseException | IOException e) {
-            throw new OAuthAuthenticationException(e.getMessage(), e);
-        }
+    public User getUser(OAuthToken accessToken) {
+        return null;
     }
 
+    @Override
     public OAuthToken getToken(String userId) throws IOException {
         OAuthCredentialsResponse credentials;
         credentialsStoreLock.lock();
@@ -170,20 +114,20 @@ public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
             HttpURLConnection connection = null;
             try {
 
-                connection = (HttpURLConnection)new URL(authTokenUri).openConnection();
+                connection = (HttpURLConnection)new URL(verifyAccessTokenUri).openConnection();
                 connection.setInstanceFollowRedirects(false);
 
                 final String token = credentials.token;
-                final String tokenSecret = credentials.tokenSecret;
-                final Map<String, String> requestParameters = emptyMap();
 
                 connection.setRequestProperty(AUTHORIZATION,
-                                              computeAuthorizationHeader(GET, authTokenUri, requestParameters, token, tokenSecret));
+                                              computeAuthorizationHeader(GET, verifyAccessTokenUri, token));
 
                 if (connection.getResponseCode() == 401) {
                     return null;
                 }
 
+            } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
+                e.printStackTrace();
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -193,15 +137,7 @@ public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
         return newDto(OAuthToken.class).withToken(credentials.token);
     }
 
-    /**
-     * Create authentication URL.
-     *
-     * @param requestUrl
-     *         URL of current HTTP request. This parameter required to be able determine URL for redirection after
-     *         authentication. If URL contains query parameters they will be copy to 'state' parameter and returned to
-     *         callback method.
-     * @return URL for authentication.
-     */
+    @Override
     public String getAuthenticateUrl(URL requestUrl, List<String> scopes) throws OAuthAuthenticationException {
 
 
@@ -209,19 +145,23 @@ public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
             // construct the callback url
             final GenericUrl url = new GenericUrl(requestUrl);
 
+            String callbackUrl = url.getFirst("callbackUrl").toString();
+            String userId = url.getFirst("userId").toString();
+            String provider = url.getFirst("oauth_provider").toString();
+            String redirectUrl = url.getFirst("redirect_after_login").toString();
+
             final OAuthGetTemporaryToken getTemporaryToken = new BitBucketOAuthGetTemporaryToken(requestTokenUri);
             getTemporaryToken.signer = getOAuthRsaSigner();
-            getTemporaryToken.consumerKey = "consumer123456";
-            getTemporaryToken.callback =  url.getFirst("redirect_after_login").toString()
-                                          + "?state=" + URLEncoder.encode("oauth_provider=bitbucket", "UTF-8");
+            getTemporaryToken.consumerKey = consumerKey;
+            getTemporaryToken.callback = callbackUrl + "?state=" + URLEncoder.encode("oauth_provider=" + provider +
+                                                                                     "&userId=" + userId +
+                                                                                     "&redirect_after_login=" + redirectUrl, "UTF-8");
             getTemporaryToken.transport = httpTransport;
 
             final OAuthCredentialsResponse credentialsResponse = getTemporaryToken.execute();
 
             final OAuthAuthorizeTemporaryTokenUrl authorizeTemporaryTokenUrl = new OAuthAuthorizeTemporaryTokenUrl(authTokenUri);
             authorizeTemporaryTokenUrl.temporaryToken = credentialsResponse.token;
-
-            sharedTokenSecrets.put(credentialsResponse.token, credentialsResponse.tokenSecret);
 
             return authorizeTemporaryTokenUrl.build();
 
@@ -230,6 +170,7 @@ public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
         }
     }
 
+    @Override
     public String callback(URL requestUrl, List<String> scopes) throws OAuthAuthenticationException {
         try {
             final GenericUrl callbackUrl = new GenericUrl(requestUrl.toString());
@@ -245,7 +186,7 @@ public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
             final String oauthTemporaryToken = (String)callbackUrl.getFirst(OAUTH_TOKEN_PARAM_KEY);
 
             final OAuthGetAccessToken getAccessToken = new BitBucketOAuthGetAccessToken(accessTokenUri);
-            getAccessToken.consumerKey = "consumer123456";
+            getAccessToken.consumerKey = consumerKey;
             getAccessToken.temporaryToken = oauthTemporaryToken;
             getAccessToken.verifier = (String)callbackUrl.getFirst(OAUTH_VERIFIER_PARAM_KEY);
             getAccessToken.transport = httpTransport;
@@ -255,9 +196,6 @@ public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
             final String state = (String)callbackUrl.getFirst(STATE_PARAM_KEY);
 
             String userId = getUserFromStateParameter(state);
-            if (userId == null) {
-                userId = getUser(newDto(OAuthToken.class).withToken(credentials.token)).getId();
-            }
 
             credentialsStoreLock.lock();
             try {
@@ -294,28 +232,17 @@ public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
      *         the HTTP request method.
      * @param requestUrl
      *         the HTTP request url with encoded query parameters.
-     * @param requestParameters
-     *         the HTTP request parameters. HTTP request parameters must include raw values of application/x-www-form-urlencoded POST
-     *         parameters.
      * @param token
      *         the token.
-     * @param tokenSecret
-     *         the secret token.
      * @return the authorization header value, or {@code null}.
      */
     private String computeAuthorizationHeader(@NotNull final String requestMethod,
                                               @NotNull final String requestUrl,
-                                              @NotNull final Map<String, String> requestParameters,
-                                              @NotNull final String token,
-                                              @NotNull final String tokenSecret) {
-
-        final OAuthHmacSigner signer = new OAuthHmacSigner();
-        signer.clientSharedSecret = clientSecret;
-        signer.tokenSharedSecret = tokenSecret;
+                                              @NotNull final String token) throws InvalidKeySpecException, NoSuchAlgorithmException {
 
         final OAuthParameters oauthParameters = new OAuthParameters();
-        oauthParameters.consumerKey = clientId;
-        oauthParameters.signer = signer;
+        oauthParameters.consumerKey = consumerKey;
+        oauthParameters.signer = getOAuthRsaSigner();
         oauthParameters.token = token;
         oauthParameters.version = "1.0";
 
@@ -323,67 +250,14 @@ public class BitbucketServerOAuthAuthenticator extends OAuthAuthenticator {
         oauthParameters.computeTimestamp();
 
         final GenericUrl genericRequestUrl = new GenericUrl(requestUrl);
-        genericRequestUrl.putAll(requestParameters);
 
         try {
-
             oauthParameters.computeSignature(requestMethod, genericRequestUrl);
-
         } catch (GeneralSecurityException e) {
             throw new RuntimeException(e);
         }
 
         return oauthParameters.getAuthorizationHeader();
-    }
-
-    private <O> O doRequest(URL requestUrl, Class<O> userClass, Map<String, String> params) throws IOException, JsonParseException {
-        HttpURLConnection http = null;
-        try {
-            http = (HttpURLConnection)requestUrl.openConnection();
-            http.setRequestMethod("GET");
-            if (params != null) {
-                for (Map.Entry<String, String> entry : params.entrySet()) {
-                    http.setRequestProperty(entry.getKey(), entry.getValue());
-                }
-            }
-            int responseCode = http.getResponseCode();
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                LOG.warn("Can not receive bitbucket user by path: {}. Response status: {}. Error message: {}",
-                         requestUrl.toString(), responseCode, IoUtil.readStream(http.getErrorStream()));
-                return null;
-            }
-
-            try (InputStream input = http.getInputStream()) {
-                return JsonHelper.fromJson(input, userClass, null);
-            }
-        } finally {
-            if (http != null) {
-                http.disconnect();
-            }
-        }
-    }
-
-    public static class BitbucketEmail {
-        private boolean primary;
-        private String  email;
-
-        public boolean isPrimary() {
-            return primary;
-        }
-
-        @SuppressWarnings("UnusedDeclaration")
-        public void setPrimary(boolean primary) {
-            this.primary = primary;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        @SuppressWarnings("UnusedDeclaration")
-        public void setEmail(String email) {
-            this.email = email;
-        }
     }
 
     /**
