@@ -17,8 +17,11 @@
     from Codenvy S.A..
 
 -->
-
-<che-toolbar che-title="Settings"></che-toolbar>
-<md-content flex md-scroll-y md-theme="maincontent-theme">
-  <cdvy-license></cdvy-license>
-</md-content>
+<che-popup title="User License Has Reached Its Limit" on-close="licenseLimitController.hide()">
+  <div class="license-issue-message">
+    <span>{{licenseLimitController.message}}</span>
+    <che-button-primary che-button-title="OK"
+                        ng-click="licenseLimitController.hide()">
+    </che-button-primary>
+  </div>
+</che-popup>
